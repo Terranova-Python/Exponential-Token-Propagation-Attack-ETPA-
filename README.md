@@ -1,8 +1,7 @@
-# Exponential-Token-Propagation-Attack-ETPA-
+Exponential Token Propagation Attack (ETPA)
 
-Title: Exponential Token Propagation Attack (ETPA)
 Author: Anthony Terrano
-Attack Class: Token Abuse / Identity Propagation
+Attack Class: Credential Harvesting + Token Abuse / Identity Propagation
 Severity (Conceptual): High
 Attack Vector: Network
 Privileges Required: Low (valid user account)
@@ -10,91 +9,166 @@ User Interaction: Required
 Scope: Changed
 Impact: Confidentiality, Integrity
 
-Description
+Overview
 
-An Exponential Token Propagation Attack (ETPA) is an identity-based attack pattern affecting cloud collaboration platforms that utilize OAuth authentication and external file-sharing workflows, such as Microsoft 365 SharePoint Online and OneDrive.
+The Exponential Token Propagation Attack (ETPA) is an identity-based attack pattern targeting cloud collaboration platforms that rely on OAuth authentication and trusted file-sharing workflows, such as Microsoft 365 SharePoint Online and OneDrive.
 
-The attack begins with the compromise of a single user account and leverages legitimate SharePoint sharing operations and mailbox rule manipulation to distribute maliciously crafted sharing links. These links abuse trusted authentication tokens or session handling mechanisms to capture or reuse authentication tokens from recipients.
+ETPA combines credential harvesting via trusted SharePoint sharing links with OAuth token issuance and persistence, allowing attackers to bypass MFA after initial credential capture and propagate access across additional accounts. Each successful interaction results in a new account takeover, enabling exponential lateral spread without malware delivery or exploitation of a traditional software vulnerability.
 
-Each successful interaction results in additional account compromise, enabling the attack to self-propagate exponentially without exploiting a software vulnerability or deploying malware. The use of valid tokens, legitimate domains, and trusted sharing mechanisms allows the attack to evade traditional security controls and blend into normal user behavior.
+Key Characteristics
 
-Technical Details
+Uses legitimate SharePoint and OneDrive sharing links
 
-The attack abuses:
+Harvests user credentials via trusted collaboration context
 
-OAuth access and refresh tokens
+MFA satisfied or bypassed through token issuance/session persistence
 
-SharePoint secure sharing links
+No malware or exploit code required
 
-Exchange mailbox rules
+Self-propagating account compromise
 
-Legitimate “SharingLinkCreated” and “AddedToSharingLink” operations
-
-No memory corruption or code execution is required.
+Difficult to detect using IOC-based controls
 
 Attack Flow Summary
 
-Attacker compromises a user account
+Initial user account compromise
 
-Malicious SharePoint file or link is created
+Malicious SharePoint file or link creation
 
-Mailbox rules suppress user awareness
+Credential harvesting through trusted SharePoint link
 
-File permissions are broadened for external sharing
+OAuth token issuance and MFA bypass via session persistence
 
-Trusted sharing links are sent to contacts
+Mailbox rule manipulation to suppress detection
 
-Each recipient interaction results in additional account compromise
+Permission changes enabling external sharing
 
-The process is automated for large-scale propagation
+Propagation to additional users
+
+Automated repetition at scale
+
+Attack Phases (Detailed)
+Phase 1 – Initial Compromise
+
+The attacker gains access to a single Microsoft 365 account through phishing, prior compromise, or token theft. This account is used as the initial propagation point.
+
+Phase 2 – Infected SharePoint File Creation
+
+Using the compromised account, the attacker creates or modifies a SharePoint or OneDrive file containing a malicious authentication lure. The lure presents itself within the context of a legitimate SharePoint sharing experience.
+
+The file is hosted within the tenant, increasing trust and reducing user suspicion.
+
+Phase 3 – Credential Harvesting via Trusted Link
+
+Recipients who open the SharePoint link are presented with a Microsoft-branded authentication prompt. The user enters their Microsoft account password, believing the request to be legitimate due to the trusted sender and SharePoint domain.
+
+The attacker captures the credentials and initiates an authenticated session.
+
+Phase 4 – MFA Bypass via Token Issuance
+
+Although MFA is enabled, the successful credential submission results in:
+
+OAuth access and/or refresh token issuance
+
+Session persistence that satisfies MFA requirements
+
+Once issued, the attacker can authenticate using the token without repeated MFA challenges.
+
+Phase 5 – Hidden in Plain Sight (Mailbox Rule Abuse)
+
+The attacker creates inbox rules on the newly compromised account to:
+
+Redirect incoming mail
+
+Auto-delete messages
+
+Suppress SharePoint sharing notifications and security alerts
+
+This prevents the victim from detecting unusual activity.
+
+Phase 6 – File Permission Changes
+
+The attacker modifies permissions on the SharePoint file to:
+
+Enable external sharing
+
+Add multiple recipients
+
+Generate secure sharing links
+
+Phase 7 – Spray and Pray
+
+Legitimate SharePoint sharing links (e.g., contoso.sharepoint.com/...) are sent to all contacts of the compromised user, dramatically increasing reach.
+
+Phase 8 – Exponential Growth
+
+Each user who enters credentials becomes compromised, restarting the attack chain at Phase 2. This creates exponential growth across users, tenants, and partner organizations.
+
+Phase 9 – Automation and Scale
+
+The attacker automates the above steps to compromise thousands of accounts with minimal effort and infrastructure.
+
+Phase 10 – Post-Compromise Activity
+
+Once sufficient scale or high-value accounts are obtained, attackers may:
+
+Monitor email and documents
+
+Exfiltrate sensitive data
+
+Conduct extortion or ransomware operations
+
+Sell access or harvested data on underground markets
 
 Impact
 
-Successful exploitation may result in:
-
 Widespread account takeover
 
-Persistent access via token reuse
+MFA bypass through token persistence
 
-Unauthorized data access and exfiltration
+Unauthorized access to cloud data
 
-Cross-tenant compromise through trusted sharing
+Abuse of trusted collaboration features
 
-Large-scale identity-based lateral movement
+Cross-tenant identity compromise
 
-Mitigations (High-Level)
+Affected Systems
 
-Enforce conditional access and token binding
+Microsoft 365
 
-Monitor abnormal SharePoint sharing activity
+SharePoint Online
 
-Audit mailbox rule creation
+OneDrive
 
-Limit external sharing permissions
+Exchange Online
 
-Implement token lifetime and revocation controls
+Any SaaS platform using:
 
-Exact Microsoft Audit Log Indicators (Mapped to Phases)
+OAuth authentication
 
-This section maps directly to Microsoft Purview / Unified Audit Log entries.
+External file sharing
 
-Phase 1 – Compromise
+Trusted identity workflows
 
-Common Indicators
+Microsoft Audit Log Indicators
 
-UserLoggedIn
+The following indicators map directly to Microsoft Purview / Unified Audit Log and Entra ID logs.
 
-SignInLogs with:
+Initial Compromise & Credential Use
 
-Unfamiliar IPs
+Entra ID
 
-Impossible travel
+SignInLogs
 
-Token-based sign-in without MFA
+AuthenticationDetails.authenticationMethod = Password
 
-(Often not visible in Unified Audit Log alone; requires Entra ID logs)
+Followed by TokenIssued
 
-Phase 2 – Infected SharePoint File Creation
+MFA satisfied but not repeatedly challenged
+
+New IP or device fingerprint
+
+SharePoint File Creation / Modification
 
 Operations
 
@@ -106,17 +180,17 @@ FileModified
 
 FileModifiedExtended
 
-Key Fields
+Credential-Based Access Pattern
 
-SiteUrl
+Indicators
 
-SourceFileName
+Successful password authentication
 
-UserAgent (often browser-based, not automation)
+Immediate OAuth token issuance
 
-ClientIP
+No interactive MFA prompts afterward
 
-Phase 3 – Hidden in Plain Sight (Mailbox Rule Abuse)
+Mailbox Rule Abuse
 
 Operations
 
@@ -124,23 +198,15 @@ New-InboxRule
 
 Set-InboxRule
 
-Audit Log Entry
-
-ExchangeAdmin
-
-Operation: New-InboxRule or Set-InboxRule
-
 Red Flags
 
-Rules that:
+Auto-delete rules
 
-Delete messages
+External forwarding
 
-Redirect mail externally
+Keyword-based suppression (e.g., “shared”, “Microsoft”)
 
-Match on keywords like “shared”, “access”, “security”, “Microsoft”
-
-Phase 4 – File Permission Change
+SharePoint Sharing Abuse
 
 Operations
 
@@ -152,92 +218,44 @@ AddedToSharingLink
 
 UserAddedToSecureLink
 
-Key Indicators
-
-Repeated permission changes in short time window
-
-External principals added
-
-Sharing links created immediately after file creation
-
-Phase 5 – Spray and Pray
-
-Operations
-
-SharePointSharingOperation
-
-SharingLinkCreated
-
-AddedToSharingLink
-
 Patterns
 
-Same file shared with:
+Same file shared rapidly
 
-Many recipients
+External recipients
 
-External users
+Identical sharing behavior across users
 
-Same timestamp or narrow time window
+Exponential Growth Indicators
 
-Same ClientIP
+Repeated credential-based sign-ins across multiple users
 
-Phase 6 – Exponential Growth
+Similar SharePoint links
 
-Correlated Indicators
+Tight time correlation
 
-Multiple users performing:
+Shared IP ranges or automation signatures
 
-SharingLinkCreated
+Classification
 
-AddedToSharingLink
+Attack Type: Credential Harvesting + Token Abuse
 
-Identical or near-identical file names
+MITRE ATT&CK
 
-Same link structure across different accounts
+Phishing (T1566)
 
-Repeated pattern every few minutes/hours
+Valid Accounts (T1078)
 
-This is where detection should pivot from single-user alerts to behavioral correlation.
+Token Impersonation
 
-Phase 7 – Rinse and Repeat (Automation)
+Lateral Movement via Trusted Relationships
 
-Indicators
+CWE (Conceptual): Improper Authentication Token Handling
 
-High-frequency repetition of:
+Why This Matters
 
-SharePoint sharing operations
+ETPA demonstrates how trusted SaaS collaboration features can be weaponized to harvest credentials and silently bypass MFA at scale. The attack succeeds not by breaking security controls, but by operating entirely within them.
 
-Inbox rule creation
+Disclaimer
 
-Same IP ranges across many users
-
-Identical sharing behavior across accounts
-
-Phase 8 – Post-Compromise Activity
-
-Possible Indicators
-
-FileAccessed
-
-FileDownloaded
-
-SearchQueryPerformed
-
-Unusual data access patterns
-
-Long-lived token activity without interactive logins
-
-Why This Is Important
-
-This attack:
-
-Does not require malware
-
-Does not exploit a software vulnerability
-
-Uses only legitimate Microsoft 365 features
-
-Evades traditional IOC-based detection
-
-ETPA represents a systemic identity abuse pattern, not a bug — which is why naming and documenting it matters.
+This document describes an attack pattern, not a software vulnerability. All behaviors rely on legitimate platform features and user interaction. No product vulnerability is implied.
